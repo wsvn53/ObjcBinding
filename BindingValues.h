@@ -34,14 +34,21 @@ static inline void BindingObjectBlocks(const char *valueType,
     context.srcSet = srcSet;
     context.dstSet = dstSet;
     
-    // Only used for auto-release context
-    objc_setAssociatedObject(srcObject, srcKeyPath.UTF8String, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    objc_setAssociatedObject(dstObject, srcKeyPath.UTF8String, context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    if (srcObject) {
+        // Only used to AutoRelease context
+        objc_setAssociatedObject(srcObject, srcKeyPath.UTF8String,
+                                 context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [srcObject addObserver:BindingCenter.defaultCenter forKeyPath:srcKeyPath
+                       options:(NSKeyValueObservingOptionNew) context:(__bridge void *)context];
+    }
     
-    [srcObject addObserver:BindingCenter.defaultCenter forKeyPath:srcKeyPath
-                   options:(NSKeyValueObservingOptionNew) context:(__bridge void *)context];
-    [dstObject addObserver:BindingCenter.defaultCenter forKeyPath:dstKeyPath
-                   options:(NSKeyValueObservingOptionNew) context:(__bridge void *)context];
+    if (dstObject) {
+        // Only used to AutoRelease context
+        objc_setAssociatedObject(dstObject, srcKeyPath.UTF8String,
+                                 context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [dstObject addObserver:BindingCenter.defaultCenter forKeyPath:dstKeyPath
+                       options:(NSKeyValueObservingOptionNew) context:(__bridge void *)context];
+    }
 }
 
 #define BindingValues(valueType, srcObject, srcExpression, dstObject, dstExpression) { \
@@ -54,4 +61,13 @@ static inline void BindingObjectBlocks(const char *valueType,
         __strong typeof(bindingWeakSelf) self = bindingWeakSelf; &self;     \
         dstExpression = value;                                              \
     });                                                                     \
+}
+
+#define BindingValueBlocks(valueType, srcObject, srcExpression, dstBlock) { \
+    __weak typeof(self) bindingWeakSelf = self;                             \
+    BindingObjectBlocks(#valueType, srcObject, #srcExpression, nil, "",     \
+    ^(valueType value) {                                                    \
+        __strong typeof(bindingWeakSelf) self = bindingWeakSelf; &self;     \
+        srcExpression = value;                                              \
+    }, dstBlock);                                                           \
 }
